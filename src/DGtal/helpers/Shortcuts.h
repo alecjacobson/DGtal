@@ -481,6 +481,7 @@ namespace DGtal
         getKSpace( Parameters params =
                    parametersKSpace() | parametersDigitizedImplicitShape3D() )
       {
+        trace.info() << "[Shortcuts::getKSpace] " << params << std::endl;
         Scalar min_x  = params[ "minAABB"  ].as<Scalar>();
         Scalar max_x  = params[ "maxAABB"  ].as<Scalar>();
         Scalar h      = params[ "gridstep" ].as<Scalar>();
@@ -494,7 +495,9 @@ namespace DGtal
         KSpace K;
         if ( ! K.init( domain.lowerBound(), domain.upperBound(), closed ) )
           trace.error() << "[Shortcuts::getKSpace]"
-                        << " Error building Khalimsky space K=" << K << std::endl;
+                        << " Error building Khalimsky space K=" << K << std::endl
+                        << "Note: if you use decimal values, check your locale for decimal point '.' or ','."
+                        << std::endl;
         return K;
       }
 
@@ -1072,7 +1075,7 @@ namespace DGtal
               bel = Surfaces<KSpace>::findABel( K, *bimage, nb_tries_to_find_a_bel );
             } catch (DGtal::InputException& e) {
               trace.error() << "[Shortcuts::makeLightDigitalSurface]"
-                            << " ERROR Unable to find bel." << std::endl;
+                            << " ERROR Unable to find bel. " << e << std::endl;
               return ptrSurface;
             }
             // this pointer will be acquired by the surface.
@@ -1373,6 +1376,69 @@ namespace DGtal
       }    
 
     
+      /// Given any digital surface, returns the vector of its k-dimensional cells.
+      ///
+      /// @note The order of cells is given by the default traversal
+      /// of the surfels of the surface, where the cells of each
+      /// surfel are visited in no specific order.
+      ///
+      /// @tparam TDigitalSurfaceContainer either kind of DigitalSurfaceContainer
+      ///
+      /// @param[out] c2i the map Cell -> Cell index in the cell range.
+      /// @param[in] surface a smart pointer on a (light or not) digital surface (e.g. DigitalSurface or LightDigitalSurface).
+      /// @param[in] k the dimension of the output cells
+      ///
+      /// @return a range of cells as a vector.
+      template <typename TDigitalSurfaceContainer>
+      static CellRange
+      getCellRange
+      ( Cell2Index& c2i,
+        CountedPtr< ::DGtal::DigitalSurface<TDigitalSurfaceContainer> > surface,
+        const Dimension k )
+      {
+        CellRange result;
+        // Approximate number of pointels given the number of 2-cells (valid for 2d surfaces in nD).
+        result.reserve( 2 * surface->size() + 100 );
+        const KSpace& K = refKSpace( surface );
+        Idx n = 0;
+        for ( auto&& surfel : *surface )
+          {
+            CellRange primal_cells = getPrimalCells( K, surfel, k );
+            for ( auto&& primal_cell : primal_cells )
+              {
+                if ( ! c2i.count( primal_cell ) )
+                  {
+                    result.push_back( primal_cell );
+                    c2i[ primal_cell ] = n++;
+                  }
+              }
+          }
+        return result;
+      }
+
+      /// Given any digital surface, returns the vector of its k-dimensional cells.
+      ///
+      /// @note The order of cells is given by the default traversal
+      /// of the surfels of the surface, where the cells of each
+      /// surfel are visited in no specific order.
+      ///
+      /// @tparam TDigitalSurfaceContainer either kind of DigitalSurfaceContainer
+      ///
+      /// @param[in] surface a smart pointer on a (light or not) digital surface (e.g. DigitalSurface or LightDigitalSurface).
+      /// @param[in] k the dimension of the output cells
+      ///
+      /// @return a range of cells as a vector.
+      template <typename TDigitalSurfaceContainer>
+      static PointelRange
+      getCellRange
+      (
+        CountedPtr< ::DGtal::DigitalSurface<TDigitalSurfaceContainer> > surface,
+        const Dimension k )
+      {
+        Cell2Index c2i;
+        return getCellRange( c2i, surface, k );
+      }
+      
       /// Given any digital surface, returns the vector of its pointels.
       ///
       /// @note The order of pointels is given by the default traversal
@@ -1432,13 +1498,13 @@ namespace DGtal
       ///
       /// @return a range of pointels as a vector.
       template <typename TDigitalSurfaceContainer>
-        static PointelRange
-        getPointelRange
-        ( CountedPtr< ::DGtal::DigitalSurface<TDigitalSurfaceContainer> > surface )
-        {
-          Cell2Index c2i;
-          return getPointelRange( c2i, surface );
-        }
+      static PointelRange
+      getPointelRange
+      ( CountedPtr< ::DGtal::DigitalSurface<TDigitalSurfaceContainer> > surface )
+      {
+        Cell2Index c2i;
+        return getPointelRange( c2i, surface );
+      }
 
       /// Given any surfel, returns its 4 pointels in ccw order.
       ///
@@ -1449,12 +1515,12 @@ namespace DGtal
       ///
       /// @return a range of pointels as a vector.
       static PointelRange
-        getPointelRange
-        ( const KSpace& K, const SCell& surfel )
+      getPointelRange
+      ( const KSpace& K, const SCell& surfel )
       {
         return getPrimalVertices( K, surfel, true );
       }
-    
+      
       /// Given any digital surface, returns a vector of surfels in
       /// some specified order.
       ///
@@ -1467,14 +1533,14 @@ namespace DGtal
       ///
       /// @return a range of surfels as a vector.
       template <typename TDigitalSurfaceContainer>
-        static SurfelRange
-        getSurfelRange
-        ( CountedPtr< ::DGtal::DigitalSurface<TDigitalSurfaceContainer> > surface,
-          const Parameters&   params = parametersDigitalSurface() )
-        {
-          return getSurfelRange( surface, *( surface->begin() ), params );
-        }
-
+      static SurfelRange
+      getSurfelRange
+      ( CountedPtr< ::DGtal::DigitalSurface<TDigitalSurfaceContainer> > surface,
+        const Parameters&   params = parametersDigitalSurface() )
+      {
+        return getSurfelRange( surface, *( surface->begin() ), params );
+      }
+      
       /// Given a light digital surface, returns a vector of surfels in
       /// some specified order.
       ///
@@ -1490,38 +1556,38 @@ namespace DGtal
       ///
       /// @return a range of surfels as a vector.
       template <typename TDigitalSurfaceContainer>
-        static SurfelRange
-        getSurfelRange
-        ( CountedPtr< ::DGtal::DigitalSurface<TDigitalSurfaceContainer> > surface,
-          const Surfel&       start_surfel,
-          const Parameters&   params = parametersDigitalSurface() )
-        {
-          typedef ::DGtal::DigitalSurface<TDigitalSurfaceContainer> AnyDigitalSurface;
-          SurfelRange result;
-          std::string traversal = params[ "surfaceTraversal" ].as<std::string>();
-          if ( traversal == "DepthFirst" )
-            {
-              typedef DepthFirstVisitor< AnyDigitalSurface > Visitor;
-              typedef GraphVisitorRange< Visitor > VisitorRange;
-              VisitorRange range( new Visitor( *surface, start_surfel ) );
-              std::for_each( range.begin(), range.end(),
-                             [&result] ( Surfel s ) { result.push_back( s ); } );
-            }
-          else if ( traversal == "BreadthFirst" )
-            {
-              typedef BreadthFirstVisitor< AnyDigitalSurface > Visitor;
-              typedef GraphVisitorRange< Visitor > VisitorRange;
-              VisitorRange range( new Visitor( *surface, start_surfel ) );
-              std::for_each( range.begin(), range.end(),
-                             [&result] ( Surfel s ) { result.push_back( s ); } );
-            }
-          else
-            {
-              std::for_each( surface->begin(), surface->end(),
-                             [&result] ( Surfel s ) { result.push_back( s ); } );
-            }
-          return result;
-        }
+      static SurfelRange
+      getSurfelRange
+      ( CountedPtr< ::DGtal::DigitalSurface<TDigitalSurfaceContainer> > surface,
+        const Surfel&       start_surfel,
+        const Parameters&   params = parametersDigitalSurface() )
+      {
+        typedef ::DGtal::DigitalSurface<TDigitalSurfaceContainer> AnyDigitalSurface;
+        SurfelRange result;
+        std::string traversal = params[ "surfaceTraversal" ].as<std::string>();
+        if ( traversal == "DepthFirst" )
+          {
+            typedef DepthFirstVisitor< AnyDigitalSurface > Visitor;
+            typedef GraphVisitorRange< Visitor > VisitorRange;
+            VisitorRange range( new Visitor( *surface, start_surfel ) );
+            std::for_each( range.begin(), range.end(),
+                           [&result] ( Surfel s ) { result.push_back( s ); } );
+          }
+        else if ( traversal == "BreadthFirst" )
+          {
+            typedef BreadthFirstVisitor< AnyDigitalSurface > Visitor;
+            typedef GraphVisitorRange< Visitor > VisitorRange;
+            VisitorRange range( new Visitor( *surface, start_surfel ) );
+            std::for_each( range.begin(), range.end(),
+                           [&result] ( Surfel s ) { result.push_back( s ); } );
+          }
+        else
+          {
+            std::for_each( surface->begin(), surface->end(),
+                           [&result] ( Surfel s ) { result.push_back( s ); } );
+          }
+        return result;
+      }
 
       /// Given an indexed digital surface, returns a vector of surfels in
       /// some specified order.
@@ -1533,9 +1599,9 @@ namespace DGtal
       ///
       /// @return a range of indexed surfels as a vector.
       static IdxSurfelRange
-        getIdxSurfelRange
-        ( CountedPtr<IdxDigitalSurface> surface,
-          const Parameters&   params = parametersDigitalSurface() )
+      getIdxSurfelRange
+      ( CountedPtr<IdxDigitalSurface> surface,
+        const Parameters&   params = parametersDigitalSurface() )
       {
         return getIdxSurfelRange( surface, (IdxSurfel) 0, params );
       }
@@ -1553,10 +1619,10 @@ namespace DGtal
       ///
       /// @return a range of indexed surfels as a vector.
       static IdxSurfelRange
-        getIdxSurfelRange
-        ( CountedPtr<IdxDigitalSurface> surface,
-          const IdxSurfel&    start_surfel,
-          const Parameters&   params = parametersDigitalSurface() )
+      getIdxSurfelRange
+      ( CountedPtr<IdxDigitalSurface> surface,
+        const IdxSurfel&    start_surfel,
+        const Parameters&   params = parametersDigitalSurface() )
       {
         IdxSurfelRange result;
         std::string traversal = params[ "surfaceTraversal" ].as<std::string>();
@@ -1622,11 +1688,14 @@ namespace DGtal
             {
               mtlfile  = objfile.substr(0, lastindex) + ".mtl"; 
             }
+
           std::ofstream output_obj( objfile.c_str() );
           output_obj << "#  OBJ format" << std::endl;
           output_obj << "# DGtal::MeshHelpers::exportOBJwithFaceNormalAndColor" << std::endl;
           output_obj << "o anObject" << std::endl;
-          output_obj << "mtllib " << mtlfile << std::endl;
+		  //remove directory to write material
+          auto indexpath = objfile.find_last_of("/");
+          output_obj << "mtllib " << mtlfile.substr(indexpath+1) << std::endl;
           std::ofstream output_mtl( mtlfile.c_str() );
           output_mtl << "#  MTL format"<< std::endl;
           output_mtl << "# generated from MeshWriter from the DGTal library"<< std::endl;
@@ -1654,9 +1723,6 @@ namespace DGtal
           bool has_material = ( nbfaces == diffuse_colors.size() );
           Idx   idxMaterial = 0;
           std::map<Color, unsigned int > mapMaterial;
-          // MeshHelpers::exportMTLNewMaterial
-          // 	( output_mtl, idxMaterial, ambient_color, Color::Black, specular_color );
-          // mapMaterial[ Color::Black ] = idxMaterial++;
           if ( has_material )
             {
               for ( Idx f = 0; f < nbfaces; ++f )
@@ -1761,6 +1827,114 @@ namespace DGtal
         }
 
 
+      /// Outputs any vector field \a vf anchored at \a
+      /// positions as an OBJ file and a material MTL file. Optionnaly
+      /// you can specify the diffuse colors.
+      ///
+      /// @param[in] positions the bases of the vectors of the vector field.
+      /// @param[in] vf the vector field (an array of real vectors).
+      /// @param[in] thickness the thickness of the sticks representing the vector field.
+      /// @param[in] diffuse_colors either empty or a vector of size `normals.size()` specifying the diffuse color for each face.
+      /// @param[in] objfile the output filename.
+      /// @param[in] ambient_color the ambient color of all vectors.
+      /// @param[in] diffuse_color the diffuse color of all vectors (if diffuse_colors is empty).
+      /// @param[in] specular_color the specular color of all vectors.
+      /// @return 'true' if the output stream is good.
+      ///
+      /// @note It outputs only the vector field, not the surface onto which it is defined (if any).
+      static bool
+        saveVectorFieldOBJ
+	( const RealPoints&  positions,
+	  const RealVectors& vf,
+	  double             thickness,
+          const Colors&      diffuse_colors,
+          std::string        objfile,
+          const Color&       ambient_color  = Color( 32, 32, 32 ),
+          const Color&       diffuse_color  = Color( 200, 200, 255 ),
+          const Color&       specular_color = Color::White )
+        {
+          BOOST_STATIC_ASSERT (( KSpace::dimension == 3 ));
+          std::string mtlfile;
+          auto lastindex = objfile.find_last_of(".");
+          if ( lastindex == std::string::npos )
+            {
+              mtlfile  = objfile + ".mtl";
+              objfile  = objfile + ".obj";
+            }
+          else
+            {
+              mtlfile  = objfile.substr(0, lastindex) + ".mtl"; 
+            }
+          std::ofstream output_obj( objfile.c_str() );
+          output_obj << "#  OBJ format" << std::endl;
+          output_obj << "# DGtal::saveOBJ" << std::endl;
+          output_obj << "o vectors" << std::endl;
+          output_obj << "mtllib " << mtlfile << std::endl;
+          std::ofstream output_mtl( mtlfile.c_str() );
+          output_mtl << "#  MTL format"<< std::endl;
+          output_mtl << "# generated from MeshWriter from the DGTal library"<< std::endl;
+	  // Output vertices
+	  unsigned int n = std::min( positions.size(), vf.size() );
+	  for ( unsigned int i = 0; i < n; ++i )
+	    {
+	      RealPoint    p0 = positions[ i ];
+	      RealPoint    p1 = p0 + vf[ i ];
+              RealVector    v = vf[ i ];
+              RealVector absv = RealVector( fabs( v[ 0 ] ), fabs( v[ 1 ] ), fabs( v[ 2 ] ) );
+	      unsigned int mc = std::max_element( absv.begin(), absv.end() ) - absv.begin();
+	      RealVector   b  =
+		mc == 2 ? RealVector( 1, 0, 0 ) :
+		mc == 1 ? RealVector( 0, 0, 1 ) : RealVector( 0, 1, 0 );
+	      RealVector   e0 = v.crossProduct( b ).getNormalized();
+	      RealVector   e1 = v.crossProduct( e0 ).getNormalized();
+	      RealPoint    t[4] = {  thickness * e0,  thickness * e1,
+				    -thickness * e0, -thickness * e1 };
+	      for ( unsigned int j = 0; j < 4; ++j ) {
+		RealPoint pt0 = p0 + t[ j ];
+		RealPoint pt1 = p1 + t[ j ];
+		output_obj << "v " << pt0[ 0 ] << " " << pt0[ 1 ] << " " << pt0[ 2 ]
+			   << std::endl;
+		output_obj << "v " << pt1[ 0 ] << " " << pt1[ 1 ] << " " << pt1[ 2 ]
+			   << std::endl;
+	      }
+	    }
+	  // Simplify materials (very useful for blender).
+          std::map<Color,Idx> map_colors;
+	  {
+            Idx j = 0;
+            for ( auto && c : diffuse_colors )
+              if ( ! map_colors.count( c ) )
+                map_colors[ c ] = j++;
+          }
+	  
+	  // Output materials
+	  bool has_material = ! diffuse_colors.empty();
+          if ( has_material )
+	    for ( auto&& pair : map_colors )
+	      MeshHelpers::exportMTLNewMaterial
+		( output_mtl, pair.second, ambient_color, pair.first, specular_color);
+          else
+	    MeshHelpers::exportMTLNewMaterial
+	      ( output_mtl, 0, ambient_color, diffuse_color, specular_color );
+	  // Output faces
+	  for ( Idx i = 0; i < n; ++i )
+            {
+              output_obj << "usemtl material_" // << ( has_material ? i : 0 )
+                         << ( has_material ? map_colors[ diffuse_colors[ i ] ] : 0 )
+                         << std::endl;
+	      Idx b = 8*i+1;
+	      for ( Idx j = 0; j < 8; j += 2 )
+		output_obj << "f " << (b+j) << " " << (b+j+1)
+			   << " " << (b+(j+3)%8) << " " << (b+(j+2)%8) << std::endl;
+	      output_obj << "f " << b << " " << (b+2)
+			 << " " << (b+4) << " " << (b+6) << std::endl;
+	      output_obj << "f " << (b+1) << " " << (b+7)
+			 << " " << (b+5) << " " << (b+3) << std::endl;
+	    }
+          output_mtl.close();
+          return output_obj.good();
+	}
+      
       // ----------------------- Mesh services ------------------------------
     public:
 
@@ -2791,17 +2965,28 @@ namespace DGtal
       /// Given a space \a K and an oriented cell \a s, returns its vertices.
       /// @param K any cellular grid space.
       /// @param s any signed cell.
-      /// @return the vector of the vertices of s, as unsigned cells of dimension 0.
+      /// @param k any dimension between 0 and `K.sdim(s)`.
+      /// @return the vector of the faces of dimension k of s, as unsigned cells.
       static
-        CellRange getPrimalVertices( const KSpace& K, const SCell& s )
+      CellRange getPrimalCells( const KSpace& K, const SCell& s, const Dimension k )
       {
         auto faces = K.uFaces( K.unsigns( s ) );
-        CellRange primal_vtcs;
+        CellRange primal_cells;
         for ( auto&& f : faces )
           {
-            if ( K.uDim( f ) == 0 ) primal_vtcs.push_back( f );
+            if ( K.uDim( f ) == k ) primal_cells.push_back( f );
           }
-        return primal_vtcs;
+        return primal_cells;
+      }
+
+      /// Given a space \a K and an oriented cell \a s, returns its vertices.
+      /// @param K any cellular grid space.
+      /// @param s any signed cell.
+      /// @return the vector of the vertices of s, as unsigned cells of dimension 0.
+      static
+      CellRange getPrimalVertices( const KSpace& K, const SCell& s )
+      {
+        return getPrimalCells( K, s, 0 );
       }
     
       /// Given a space \a K and a surfel \a s, returns its vertices in ccw or cw order.
@@ -2811,7 +2996,7 @@ namespace DGtal
       /// @return the vector of the vertices of s, as unsigned cells of dimension 0.
       /// @note useful when exporting faces to OBJ format. 
       static
-        CellRange getPrimalVertices( const KSpace& K, const Surfel& s, bool ccw )
+      CellRange getPrimalVertices( const KSpace& K, const Surfel& s, bool ccw )
       {
         BOOST_STATIC_ASSERT(( KSpace::dimension == 3 ));
         CellRange vtcs = getPrimalVertices( K, s );

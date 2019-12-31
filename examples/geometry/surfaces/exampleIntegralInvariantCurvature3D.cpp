@@ -72,7 +72,7 @@ int main( int argc, char** argv )
     trace.info() << "Args:";
     for ( int i = 0; i < argc; ++i )
         trace.info() << " " << argv[ i ];
-    trace.info() << endl;
+    trace.info() << std::endl;
 
     double h = 1.0;
     unsigned int threshold = std::atoi( argv[ 2 ] );
@@ -139,8 +139,8 @@ int main( int argc, char** argv )
     //! [IntegralInvariantUsage]
 
     /// Drawing results
-    Value min = numeric_limits < Value >::max();
-    Value max = numeric_limits < Value >::min();
+    Value min = std::numeric_limits < Value >::max();
+    Value max = std::numeric_limits < Value >::min();
     for ( unsigned int i = 0; i < results.size(); ++i )
     {
         if ( results[ i ] < min )
