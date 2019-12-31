@@ -53,8 +53,8 @@ CONFIGURE_FILE(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/TargetUninstall.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/TargetUninstall.cmake
   @ONLY)
-ADD_CUSTOM_TARGET(uninstall
-  "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/TargetUninstall.cmake")
+#ADD_CUSTOM_TARGET(uninstall
+#  "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/TargetUninstall.cmake")
 
 # -----------------------------------------------------------------------------
 # Parsing cmake options
